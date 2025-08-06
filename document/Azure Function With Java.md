@@ -1,8 +1,10 @@
 # Azure Function With Java
 
-- [Create Project](#create-project)
-- [Deploy Information](#deploy-information)
-- [All Annotation](#all-annotation)
+- [**Create Project**](#create-project)
+- [**Deploy Information**](#deploy-information)
+- [**All Annotation**](#all-annotation)
+  - [*Table Input*](#tableinput)
+  - [*@ServiceBusQueueTrigger vs @ServiceBusQueueOutput*](#servicebusqueuetrigger-vs-servicebusqueueoutput)
 
 
 ## Create Project
@@ -101,7 +103,7 @@
 | Tag                                  | Complain                                                                                                 |
 |--------------------------------------|----------------------------------------------------------------------------------------------------------|
 | `<groupId>...</groupId>`             | The group Id specifies the group identifier for the plugin.                                              |
-| `<artifactId>...</artifactId>`       |                                                                                                          |
+| `<artifactId>...</artifactId>`       | `artifactId` is the name of the project/module or library you are using or creating.                     |
 | `<version>...</version>`             | Version specifies the version of the plugin to use                                                       |
 | `<configuration>...</configuration>` | Where we provide specific configuration setting for the plugin.                                          |
 | `<appName>...</appName>`             | Here you specifies the name of your Azure Functions Application.                                         |
@@ -115,8 +117,6 @@
 | `<executions>...</executions>`       | We define when and how the Plugin's goal should be executed                                              |
 |                                      |                                                                                                          |
 
-
-## @Function Information
 
 ## All Annotation
 - Azure Functions in Java provides a set of annotations to define input and output bindings, triggers, and other configurations directly in your Java code. These annotations simplify the process of creating serverless functions. Below is a list of commonly used annotations in Azure Functions for Java:
@@ -156,3 +156,156 @@
 | `@Cardinality`    | Specifies the cardinality of the input (e.g., single or multiple items)  |
 | `@StorageAccount` | Specifies the Azure Storage account to use for bindings                  |
 
+--------------------------
+<br/>
+
+### @TableInput
+
+```java
+import com.microsoft.azure.functions.annotation.TableInput;
+
+   @TableInput(name = "customer", 
+                tableName = "CustomerTable", 
+                partitionKey = "customerPartition", 
+                rowKey = "{id}", 
+                connection = "AzureWebJobsStorage") CustomerEntity customerEntity
+)
+```
+
+#
+#### Parameters
+- it is commonly used in Azure Functions when working with Azure Table Storage bindings in Java.
+- Use @TableInput when you want to automatically bind to a specific row in Azure Table Storage inside an Azure Function.
+
+| Field          | Description                                                               |
+|----------------|---------------------------------------------------------------------------|
+| `name`         | Variable name for the binding                                             |
+| `tableName`    | Name of the Table in Azure Storage                                        |
+| `partitionKey` | Partition key of the row you want to retrieve                             |
+| `rowKey`       | Row key (can use `{}` syntax to map from request params)                  |
+| `connection`   | Name of the app setting containing the connection string to Table Storage |
+
+#
+#### Create Azure table with code
+- `@TableInput` Can not create table because it's only to read data from an already existing table in Azure Table Storage.
+- If you want to create you must use:
+
+```java
+import com.azure.data.tables.*;
+import com.azure.data.tables.models.*;
+
+public class TableHelper {
+    public static void createTableIfNotExists(String tableName, String connectionString) {
+        TableServiceClient serviceClient = new TableServiceClientBuilder()
+            .connectionString(connectionString)
+            .buildClient();
+
+        if (!serviceClient.listTableNames().stream().anyMatch(name -> name.equalsIgnoreCase(tableName))) {
+            serviceClient.createTable(tableName);
+            System.out.println("Table created: " + tableName);
+        } else {
+            System.out.println("Table already exists: " + tableName);
+        }
+    }
+}
+```
+#
+### @ServiceBusQueueTrigger vs @ServiceBusQueueOutput
+- If you use `@ServiceBusQueueTrigger`, your Azure Function automatically triggers whenever a new message arrives in the specified queue — no manual polling required.
+- Both `@ServiceBusQueueOutput` and `@ServiceBusQueueTrigger` are Azure Functions Java annotations used to interact with Azure Service Bus queues, but they serve very different purposes.
+- `queueName`: the name of your queue
+- `connection`: name of the environment variable with Service Bus connection string
+
+| Annotation                | Purpose                     | Direction | Use Case                                |
+|---------------------------|-----------------------------|-----------|-----------------------------------------|
+| `@ServiceBusQueueTrigger` | Reads messages from a queue | Input     | Trigger the function on message arrival |
+| `@ServiceBusQueueOutput`  | Sends message to a queue    | Output    | Output data to another queue            |
+
+#
+
+- `@ServiceBusQueueOutput` will put message into `query-queue` 
+- And when `have message trigger` `@ServiceBusQueueTrigger` will go to the `query-queue` to take message and trigger
+```java
+package com.example;
+
+import com.microsoft.azure.functions.annotation.ServiceBusQueueTrigger;
+import com.microsoft.azure.functions.annotation.ServiceBusQueueOutput;
+
+/**
+ * Azure Function triggered by Service Bus queue and outputs to another queue
+ */
+public class QueueTriggerToOutputFunction {
+
+    @FunctionName("trigger")
+    public void trigger(
+        @ServiceBusQueueTrigger(
+            name = "incomingMessage",
+            queueName = "query-queue",
+            connection = "ServiceBusConnection"
+        ) String inputMessage,
+        final ExecutionContext context
+    ) {
+        context.getLogger().info("Received message: " + inputMessage);
+
+        // Simple transformation
+        String processedMessage = "Processed: " + inputMessage;
+
+        // Send to output queue
+        outputBinding.setValue(processedMessage);
+        context.getLogger().info("Sent to output queue: " + processedMessage);
+    }
+
+    @FunctionName("output")
+    public void output(
+            @ServiceBusQueueOutput(
+                    name = "outputMessage",
+                    queueName = "query-queue",
+                    connection = "ServiceBusConnection"
+            ) OutputBinding<String> outputBinding,
+            final ExecutionContext context
+    ) {
+        context.getLogger().info("Received message: " + inputMessage);
+
+        // Simple transformation
+        String processedMessage = "Processed: " + inputMessage;
+
+        // Send to output queue
+        outputBinding.setValue(processedMessage);
+        context.getLogger().info("Sent to output queue: " + processedMessage);
+    }
+    
+}
+```
+#
+#### Create Programmatically via Java SDK
+```pom
+<dependency>
+    <groupId>com.microsoft.azure.functions</groupId>
+    <artifactId>azure-functions-java-library</artifactId>
+    <version>1.4.2</version>
+</dependency>
+<dependency>
+    <groupId>com.azure</groupId>
+    <artifactId>azure-messaging-servicebus</artifactId>
+    <version>7.17.0</version>
+</dependency>
+```
+
+```java
+import com.azure.messaging.servicebus.administration.*;
+
+public class QueueSetup {
+    public static void createQueueIfNotExists(String connectionString, String queueName) {
+        ServiceBusAdministrationClient adminClient = new ServiceBusAdministrationClientBuilder()
+            .connectionString(connectionString)
+            .buildClient();
+
+        if (!adminClient.getQueueExists(queueName)) {
+            adminClient.createQueue(queueName);
+            System.out.println("Queue created: " + queueName);
+        } else {
+            System.out.println("Queue already exists: " + queueName);
+        }
+    }
+}
+```
