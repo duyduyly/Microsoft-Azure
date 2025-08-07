@@ -14,15 +14,13 @@ import com.microsoft.azure.functions.annotation.ServiceBusQueueTrigger;
 import com.microsoft.azure.functions.annotation.TableInput;
 import org.order_process_system.model.payload.OrderPayload;
 
-import java.util.Optional;
-
 public class OrderFunction {
 
     @FunctionName("OrderReceiver")
     public HttpResponseMessage receiveOrder(
             @HttpTrigger(
-                    name = "req",
                     methods = {HttpMethod.POST},
+                    name = "req",
                     authLevel = AuthorizationLevel.ANONYMOUS) OrderPayload payload,
             @TableInput(
                     name = "customer",
@@ -42,7 +40,6 @@ public class OrderFunction {
         //validate data
         //set into table input
         //push service bus queue
-
 
         String name = "";
         if (name == null) {
