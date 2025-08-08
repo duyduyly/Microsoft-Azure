@@ -1,0 +1,20 @@
+POST http://localhost:55945/api/OrderReceiver
+
+
+
+{
+  "customerId": "CUT-001",
+  "customerEmail": "john.doe@example.com",
+  "items": [
+    { "productId": "PRD-001", "quantity": 1 },
+    { "productId": "PRD-002", "quantity": 1 }
+  ],
+  "shippingAddress": {
+    "street": "123 Main Street",
+    "city": "New York",
+    "state": "NY",
+    "zipCode": "10001",
+    "country": "USA"
+  },
+  "notes": "Please deliver between 9 AM and 5 PM."
+}

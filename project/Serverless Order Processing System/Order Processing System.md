@@ -22,17 +22,34 @@
 <br/>
 
 ## Full Architecture Flow
+- `OrderReceiverFunction` Receive From Client
+  - Validate Json Payload
+  - check quantity Inventory
+  - make message queue to push in queue
+  - if Not pass validate
+    - return fail response
+    - not push queue
+- `OrderProcessorFunction` Trigger Queue
+  - update quantity Inventory
+  - push notification for Client
+
 ```text
 [Frontend Client]
      |
      ↓  (POST /order)
 [OrderReceiverFunction] ──→ (Lookup Table Storage for customer info)
      ↓
+  [Optional: Check Json Payload]
+     ↓
+  [Optional: Inventory Check]
+     ↓
   (ServiceBusQueue: orders)
      ↓
 [OrderProcessorFunction]
      ↓
- [Optional: Inventory Check]
+  (Update Inventory Quantity)    
+     ↓
+  (Push Notification to Client)    
      ↓
  [Optional: Send Email/Notification]
 ```
@@ -40,57 +57,101 @@
 -------------------
 <br/>
 
-## Order Payload
+## Payload
+
+### OrderReceiverFunction
+
 ```Json
 {
-  "orderId": "ORD-20250805-001",
-  "customerId": "CUST-789",
-  "orderDate": "2025-08-05T10:30:00Z",
+  "customerId": "CUST-9483921",
+  "customerEmail": "john.doe@example.com",
   "items": [
-    {
-      "productId": "PROD-1001",
-      "productName": "Wireless Mouse",
-      "quantity": 2,
-      "unitPrice": 15.99
-    },
-    {
-      "productId": "PROD-1002",
-      "productName": "Mechanical Keyboard",
-      "quantity": 1,
-      "unitPrice": 59.95
-    }
+    { "productId": "PROD-1001", "quantity": 2 },
+    { "productId": "PROD-2042", "quantity": 1 }
   ],
   "shippingAddress": {
-    "line1": "123 Azure Street",
-    "line2": "Suite 456",
-    "city": "Cloudville",
-    "state": "WA",
-    "zip": "98052",
+    "street": "123 Main Street",
+    "city": "New York",
+    "state": "NY",
+    "zipCode": "10001",
     "country": "USA"
   },
-  "paymentMethod": "VISA",
-  "notes": "Please deliver between 9 AM - 12 PM"
+  "notes": "Please deliver between 9 AM and 5 PM."
 }
+
+```
+#
+### OrderProcessorFunction
+-  **Success**
+```Json
+{
+        "orderId": "ORD-20250807-0012",
+        "customerId": "CUST-9483921",
+        "customerEmail": "john.doe@example.com",
+        "orderDate": "2025-08-07T11:23:00Z",
+        "items": [
+        {
+        "productId": "PROD-1001",
+        "productName": "Wireless Mouse",
+        "quantity": 2,
+        "price": 25.99
+        },
+        {
+        "productId": "PROD-2042",
+        "productName": "Laptop Stand",
+        "quantity": 1,
+        "price": 45.50
+        }
+        ],
+        "totalAmount": 97.48,
+        "shippingAddress": {
+        "street": "123 Main Street",
+        "city": "New York",
+        "state": "NY",
+        "zipCode": "10001",
+        "country": "USA"
+        },
+        "paymentStatus": "PENDING",
+        "notes": "Please deliver between 9 AM and 5 PM."
+        }
+
 ```
 
-### Describe
-| Field             | Type     | Description                                          |
-|-------------------|----------|------------------------------------------------------|
-| `orderId`         | String   | Unique ID for this order                             |
-| `customerId`      | String   | Links to Azure Table row key (partitionKey + rowKey) |
-| `orderDate`       | ISO Date | When the order was created                           |
-| `items[]`         | Array    | List of products in this order                       |
-| `shippingAddress` | Object   | Full shipping address                                |
-| `paymentMethod`   | String   | Payment method type                                  |
-| `notes`           | String   | Optional delivery notes                              |
+- do not pass Validate
+```Json
+{
+  "errorType": "ValidationError",
+  "errorMessage": "Missing required field: customerEmail",
+  "timestamp": "2025-08-07T11:45:00Z",
+  "originalPayload": {
+    "customerId": "CUST-9483921",
+    "items": [
+      { "productId": "PROD-1001", "quantity": 2 }
+    ],
+    "shippingAddress": {
+      "street": "123 Main Street",
+      "city": "New York",
+      "state": "NY",
+      "zipCode": "10001",
+      "country": "USA"
+    }
+  }
+}
 
+```
 
 
 -------------------
 <br/>
 
+
+
 ## 📦 Services/Functions You’ll Build
 ### 1. OrderReceiverFunction
+- the first: validate Payload
+- Validate quantity in Inventory
+- Make a message Json to push in queue
+
 | Type                                     | Purpose                                        |
 |------------------------------------------|------------------------------------------------|
 | `@FunctionName("OrderReceiverFunction")` | Entry point for receiving orders               |
@@ -101,6 +162,9 @@
 - ➡️ Output: Queue message for further processing
 
 ### 2. OrderProcessorFunction
+- update Inventory
+- Push notification for client
+
 | Type                                      | Purpose                                                |
 |-------------------------------------------|--------------------------------------------------------|
 | `@FunctionName("OrderProcessorFunction")` | Process incoming order from the queue                  |
