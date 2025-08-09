@@ -11,6 +11,9 @@ target/
 *.iws
 *.iml
 *.ipr
+local.settings.json
+host.json
+
 
 ### Eclipse ###
 .apt_generated
