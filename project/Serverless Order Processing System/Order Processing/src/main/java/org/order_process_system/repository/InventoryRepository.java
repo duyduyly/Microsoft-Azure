@@ -4,20 +4,19 @@ import com.azure.data.tables.TableClient;
 import com.azure.data.tables.TableClientBuilder;
 import com.azure.data.tables.models.ListEntitiesOptions;
 import com.azure.data.tables.models.TableEntity;
-import com.azure.data.tables.models.TableTransactionAction;
-import com.azure.data.tables.models.TableTransactionActionType;
-import lombok.extern.slf4j.Slf4j;
+import com.azure.data.tables.models.TableEntityUpdateMode;
 import org.order_process_system.model.entity.InventoryEntity;
 import org.order_process_system.model.payload.OrderMessage;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-@Slf4j
 public class InventoryRepository {
     private final TableClient tableClient;
+    private static final Logger LOGGER = Logger.getLogger(InventoryRepository.class.getName());
 
     public InventoryRepository() {
         String connectionString = System.getenv("AzureWebJobsStorage");
@@ -35,7 +34,7 @@ public class InventoryRepository {
                 .map(id -> String.format("productId eq '%s'", id))
                 .collect(Collectors.joining(" or "));
 
-        System.out.printf("Filter: %s", filter);
+        LOGGER.info("Filter: "+ filter);
         return this.queryToMap(filter);
     }
 
@@ -44,23 +43,22 @@ public class InventoryRepository {
                 .map(id -> String.format("productId eq '%s'", id))
                 .collect(Collectors.joining(" or "));
 
-        System.out.printf("Filter: %s", filter);
-
+        LOGGER.info("Filter: "+ filter);
         return this.queryToMap(filter);
     }
 
     public void update(List<InventoryEntity> inventoryEntityList) {
-        List<TableTransactionAction> actions = new ArrayList<>();
-
+//        List<TableTransactionAction> actions = new ArrayList<>();
         for (InventoryEntity inventory : inventoryEntityList) {
             TableEntity entity = new TableEntity(inventory.getPartitionKey(), inventory.getRowKey())
                     .addProperty("productId", inventory.getProductId())
                     .addProperty("quantity", inventory.getQuantity());
-
-            actions.add(new TableTransactionAction(TableTransactionActionType.UPDATE_MERGE, entity));
+            tableClient.updateEntity(entity, TableEntityUpdateMode.MERGE);
+            LOGGER.info(String.format("Updated: (productId: %s, quantity: %s", inventory.getProductId(), inventory.getQuantity()));
+//            actions.add(new TableTransactionAction(TableTransactionActionType.UPDATE_MERGE, entity));
         }
 
-        tableClient.submitTransaction(actions);
+//        tableClient.submitTransaction(actions); // just Update for record same PartitionKey
     }
 
     private List<InventoryEntity> queryToMap(String filter) {

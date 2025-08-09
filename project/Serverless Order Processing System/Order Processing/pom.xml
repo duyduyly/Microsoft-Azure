@@ -15,7 +15,7 @@
         <azure.functions.maven.plugin.version>1.24.0</azure.functions.maven.plugin.version>
         <azure.functions.java.library.version>2.2.0</azure.functions.java.library.version>
         <functionAppName>OrderProcessSystem20250806110151541</functionAppName>
-        <resourceGroup>java-functions-group</resourceGroup>
+        <resourceGroup>order-process</resourceGroup>
         <appServicePlanName>java-functions-app-service-plan</appServicePlanName>
         <azure.region>westeurope</azure.region>
         <jackson.core.version>2.18.2</jackson.core.version>
@@ -67,23 +67,6 @@
             <artifactId>azure-data-tables</artifactId>
             <version>12.3.14</version> <!-- or latest -->
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>jakarta.validation</groupId>-->
-<!--            <artifactId>jakarta.validation-api</artifactId>-->
-<!--            <version>3.0.2</version>-->
-<!--        </dependency>-->
-
-<!--        <dependency>-->
-<!--            <groupId>org.hibernate.validator</groupId>-->
-<!--            <artifactId>hibernate-validator</artifactId>-->
-<!--            <version>7.0.5.Final</version>-->
-<!--        </dependency>-->
-
-<!--        <dependency>-->
-<!--            <groupId>org.glassfish</groupId>-->
-<!--            <artifactId>jakarta.el</artifactId>-->
-<!--            <version>4.0.2</version>-->
-<!--        </dependency>-->
     </dependencies>
 
     <build>

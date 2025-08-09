@@ -8,53 +8,50 @@ import com.microsoft.azure.functions.OutputBinding;
 import com.microsoft.azure.functions.annotation.AuthorizationLevel;
 import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.HttpTrigger;
-import com.microsoft.azure.functions.annotation.QueueOutput;
-import com.microsoft.azure.functions.annotation.QueueTrigger;
-import com.microsoft.azure.functions.annotation.TableInput;
-import org.order_process_system.model.entity.CustomerEntity;
+import com.microsoft.azure.functions.annotation.ServiceBusQueueOutput;
+import com.microsoft.azure.functions.annotation.ServiceBusQueueTrigger;
 import org.order_process_system.model.payload.OrderMessage;
 import org.order_process_system.model.payload.OrderRequest;
 import org.order_process_system.service.MailService;
 import org.order_process_system.service.ProcessOrderService;
 
-import java.util.List;
 import java.util.Optional;
 
 public class OrderFunction {
-    private final ProcessOrderService orderService = new ProcessOrderService();
-
     @FunctionName("OrderReceiver")
     public HttpResponseMessage receiveOrder(
             @HttpTrigger(
                     methods = {HttpMethod.POST},
                     name = "req",
                     authLevel = AuthorizationLevel.ANONYMOUS) HttpRequestMessage<Optional<OrderRequest>> request,
-            @TableInput(
-                    name = "Customer",
-                    tableName = "customer",
-                    connection = "AzureWebJobsStorage"
-            ) List<CustomerEntity> customerEntities,
-            @QueueOutput(
-                    name = "inqueue",
-                    queueName = "order-process-queue",
-                    connection = "AzureWebJobsStorage") OutputBinding<String> output,
+            @ServiceBusQueueOutput(
+                    name = "enqueue",
+                    queueName = "%order-queue%",
+                    connection = "orderServiceBus-connectString"
+            ) OutputBinding<OrderMessage> output,
             final ExecutionContext context) {
-        context.getLogger().info("OrderReceiver Start.");
+        context.getLogger().info("OrderReceiver Start with raw Payload: " + request.getBody().get());
+        ProcessOrderService orderService = new ProcessOrderService();
         return orderService.process(request, output);
     }
 
     @FunctionName("OrderProcessor")
     public void processOrder(
-            @QueueTrigger(
-                    name = "outqueue",
-                    queueName = "order-process-queue",
-                    connection = "AzureWebJobsStorage") OrderMessage orderMessage,
+            @ServiceBusQueueTrigger(
+                    name = "dequeue",
+                    queueName = "%order-queue%",
+                    connection = "orderServiceBus-connectString") OrderMessage orderMessage,
             final ExecutionContext context) {
-        context.getLogger().info("Java HTTP trigger processed a request.");
 
+        context.getLogger().info("OrderProcessor Start With Message: " + orderMessage.toString());
+        ProcessOrderService orderService = new ProcessOrderService();
         MailService mailService = new MailService();
+
         //update Inventory
-        orderService.updateProductQuantity(orderMessage, context.getLogger());
+        orderService.updateProductQuantity(orderMessage);
+
+        //create Order Log
+        orderService.createOrderLog(orderMessage);
 
         //notification
         mailService.push();
