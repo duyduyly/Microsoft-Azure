@@ -1,122 +1,16 @@
 # Azure Function With Java
-
-- [**Create Project**](#create-project)
-- [**Deploy Information**](#deploy-information)
 - [**All Annotation**](#all-annotation)
-  - [*Table Input*](#tableinput)
-  - [*@ServiceBusQueueTrigger vs @ServiceBusQueueOutput*](#servicebusqueuetrigger-vs-servicebusqueueoutput)
+- [*@TableInput and @TableOutput*](#tableinput-and-tableoutput)
+- [**@QueueTrigger And @QueueOutput**](#)
+- [**@ServiceBusQueueTrigger vs @ServiceBusQueueOutput**](#servicebusqueuetrigger-vs-servicebusqueueoutput)
+  - [*What is Service Bus?*](#what-is-service-bus-queue-in-azure)
+  - [*Create On Azure*](#create-on-azure)
+  - [*Setup On Local*](#setup-on-local)
+  - [*Create Programmatically Via Java SDK*](#create-programmatically-via-java-sdk)
 
 
-## Create Project
-- IDE Intellij
-- use maven to create Project
-### **1. Create Dashboard:**
-- Catalog : `Maven Central`
-- Archetype: `com.microsoft.azure:azure-functions-archetype`
-- Version: `1.52`
-- ![Initialize Dashboard Image.png](resource/create-project/Initialize%20Dashboard%20Image.png)
-
-### **2. After Create:**
-- ![Project Structure After Create.png](resource/create-project/Project%20Structure%20After%20Create.png)
-
-### **3. Set up `Azure.Functions.Cli.min.win-x64.4.1.0` to run**
-- Or Can Download when IntelliJ recommend
-- https://github.com/Azure/azure-functions-core-tools/releases
-
-### 4. **After set run function:**
-   - ![Run-image-1.png](resource/create-project/Run-image-1.png)
-   - ![img.png](resource/create-project/after-run-image.png)
-
-### **5. Maven package:**
-   - ![Maven library.png](resource/create-project/Maven%20library.png)
-
-
-### **6. Final Deploy:**
-- Setup Information CLI: https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-windows?view=azure-cli-latest&pivots=zip (to login Azure)
-- ![deploy-plugin.png](resource/create-project/deploy-plugin.png)
-
-
-
----------------------
+------------------------
 <br/>
-
-## Deploy Information:
-- In maven
-
-```xml
- <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                    <encoding>${project.build.sourceEncoding}</encoding>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>com.microsoft.azure</groupId>
-                <artifactId>azure-functions-maven-plugin</artifactId>
-                <version>${azure.functions.maven.plugin.version}</version>
-                <configuration>
-                    <!-- function app name -->
-                    <appName>${functionAppName}</appName>
-                    <!-- function app resource group -->
-                    <resourceGroup>java-functions-group</resourceGroup>
-                    <!-- function app service plan name -->
-                    <appServicePlanName>java-functions-app-service-plan</appServicePlanName>
-                    <!-- function app region-->
-                    <pricingTier>consumption</pricingTier>
-                    <!-- refers https://github.com/microsoft/azure-maven-plugins/wiki/Azure-Functions:-Configuration-Details#supported-regions for all valid values -->
-                    <region>westeurope</region>
-                    <!-- function pricingTier, default to be consumption if not specified -->
-                    <!-- refers https://github.com/microsoft/azure-maven-plugins/wiki/Azure-Functions:-Configuration-Details#supported-pricing-tiers for all valid values -->
-                    <!-- <pricingTier></pricingTier> -->
-                    <!-- Whether to disable application insights, default is false -->
-                    <!-- refers https://github.com/microsoft/azure-maven-plugins/wiki/Azure-Functions:-Configuration-Details for all valid configurations for application insights-->
-                    <!-- <disableAppInsights></disableAppInsights> -->
-                    <runtime>
-                        <!-- runtime os, could be windows, linux or docker-->
-                        <os>windows</os>
-                        <javaVersion>${java.version}</javaVersion>
-                    </runtime>
-                    <appSettings>
-                        <property>
-                            <name>FUNCTIONS_EXTENSION_VERSION</name>
-                            <value>~4</value>
-                        </property>
-                    </appSettings>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>package-functions</id>
-                        <goals>
-                            <goal>package</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <!--Remove obj folder generated by .NET SDK in maven clean-->
-```
-
-| Tag                                  | Complain                                                                                                 |
-|--------------------------------------|----------------------------------------------------------------------------------------------------------|
-| `<groupId>...</groupId>`             | The group Id specifies the group identifier for the plugin.                                              |
-| `<artifactId>...</artifactId>`       | `artifactId` is the name of the project/module or library you are using or creating.                     |
-| `<version>...</version>`             | Version specifies the version of the plugin to use                                                       |
-| `<configuration>...</configuration>` | Where we provide specific configuration setting for the plugin.                                          |
-| `<appName>...</appName>`             | Here you specifies the name of your Azure Functions Application.                                         |
-| `<resourceGroup>...</resourceGroup>` | This defines the Azure resource group where your functions will be deployed in our case Azure Functions. |
-| `<pricingTier>...</pricingTier>`     | You can specify the pricing tier for your functions.                                                     |
-| `<region>...</region>`               | This determine the Azure region where your functions will be deployed.                                   |
-| `<runtime>...</runtime>`             | Here you configure the runtime settings for your Azure Functions.                                        |
-| `<os>..</os>`                        | OS Specifies the `Operation System` which set is to Window                                               |
-| `<javaVersion>...</javaVersion>`     | This set java version for System                                                                         |
-| `<appSettings>...</appSettings>`     | You can define Application settings specific to your functions.                                          |
-| `<executions>...</executions>`       | We define when and how the Plugin's goal should be executed                                              |
-|                                      |                                                                                                          |
-
 
 ## All Annotation
 - Azure Functions in Java provides a set of annotations to define input and output bindings, triggers, and other configurations directly in your Java code. These annotations simplify the process of creating serverless functions. Below is a list of commonly used annotations in Azure Functions for Java:
@@ -159,7 +53,9 @@
 --------------------------
 <br/>
 
-### @TableInput
+## @TableInput and @TableOutput
+### @Table Input
+- `@TableInput` Connect To Table On Azure and get Value From
 
 ```java
 import com.microsoft.azure.functions.annotation.TableInput;
@@ -173,7 +69,7 @@ import com.microsoft.azure.functions.annotation.TableInput;
 ```
 
 #
-#### Parameters
+### Parameters
 - it is commonly used in Azure Functions when working with Azure Table Storage bindings in Java.
 - Use @TableInput when you want to automatically bind to a specific row in Azure Table Storage inside an Azure Function.
 
@@ -186,7 +82,7 @@ import com.microsoft.azure.functions.annotation.TableInput;
 | `connection`   | Name of the app setting containing the connection string to Table Storage |
 
 #
-#### Create Azure table with code
+### Create Azure table with code
 - `@TableInput` Can not create table because it's only to read data from an already existing table in Azure Table Storage.
 - If you want to create you must use:
 
@@ -209,75 +105,80 @@ public class TableHelper {
     }
 }
 ```
-#
-### @ServiceBusQueueTrigger vs @ServiceBusQueueOutput
-- If you use `@ServiceBusQueueTrigger`, your Azure Function automatically triggers whenever a new message arrives in the specified queue — no manual polling required.
-- Both `@ServiceBusQueueOutput` and `@ServiceBusQueueTrigger` are Azure Functions Java annotations used to interact with Azure Service Bus queues, but they serve very different purposes.
-- `queueName`: the name of your queue
-- `connection`: name of the environment variable with Service Bus connection string
 
+------------------------
+<br/>
+
+
+## @ServiceBusQueueTrigger vs @ServiceBusQueueOutput
+
+#
+### What is Service Bus Queue in Azure?
+- Service Bus Queue is a message broker component that lets you send and receive messages in a decoupled, reliable, and asynchronous way.
+
+**Comparative Cost Scenarios (Monthly Estimates) (Prising):**
+
+| Scenario                      | Basic (\$) | Standard (\$) | Premium (\$) |
+|-------------------------------|------------|---------------|--------------|
+| 1M messages/month             | \~0.10     | \~9.72        | \~668.16     |
+| 1M messages/day (30M/month)   | \~3        | \~47.32       | \~668.16     |
+| 1M messages/hour (720M/month) | \~72       | \~749.32      | \~668.16     |
+- `Basic`: Very low cost, ideal for development or low-volume use.
+- `Standard`: Balances cost and features; best for moderate workloads and production with occasional spikes.
+- `Premium`: For high-throughput, low-latency, or mission-critical systems; pricing is flat-per-hour, offering stability and advanced features.
+
+#
+### Create On Azure
+- Search Service Bus in Azure -> Create -> fill form by requirement -> can create Queue
+- ![Create Service Bus Form.png](resource/service-bus-img/Create%20Service%20Bus%20Form.png)
+- ![Create Queue Form.png](resource/service-bus-img/Create%20Queue%20Form.png)
+- Step Config Service bus Queue Into your Function Service:
+  - `Your Service bus` -> `Settings` -> `Shared access policies` -> `RootManageSharedAccessKey` -> copy `Primary connection string`
+- Step Create variable for Function Service: 
+  - `Your Function Service` -> `Settings` -> `Environment variables` -> `Add` -> `name` (connection in Code) and `value` (is above link (`Primary connection string`))
+- So we had connection of @ServiceBus next step we will set up on local
+
+#
+### Setup on local
 | Annotation                | Purpose                     | Direction | Use Case                                |
 |---------------------------|-----------------------------|-----------|-----------------------------------------|
 | `@ServiceBusQueueTrigger` | Reads messages from a queue | Input     | Trigger the function on message arrival |
 | `@ServiceBusQueueOutput`  | Sends message to a queue    | Output    | Output data to another queue            |
 
-#
+- `connection` is name just config above
+- `queueName` is name of queue in Service Bus Queue 
+  - `%order-queue%` use value in `settings`
+    - on Azure is value in `Environment variables`
+    - on Local is value in `local.settings.json`
+- `name` is name of Annotation
 
-- `@ServiceBusQueueOutput` will put message into `query-queue` 
-- And when `have message trigger` `@ServiceBusQueueTrigger` will go to the `query-queue` to take message and trigger
-```java
-package com.example;
+````java
+@ServiceBusQueueOutput(
+        name = "enqueue",
+        queueName = "%order-queue%", // use value in local.settings.json
+        connection = "orderServiceBus-connectString") OutputBinding<OrderMessage> output;
+@ServiceBusQueueTrigger(
+        name = "dequeue",
+        queueName = "%order-queue%",
+        connection = "orderServiceBus-connectString") OrderMessage orderMessage;
+````
 
-import com.microsoft.azure.functions.annotation.ServiceBusQueueTrigger;
-import com.microsoft.azure.functions.annotation.ServiceBusQueueOutput;
-
-/**
- * Azure Function triggered by Service Bus queue and outputs to another queue
- */
-public class QueueTriggerToOutputFunction {
-
-    @FunctionName("trigger")
-    public void trigger(
-        @ServiceBusQueueTrigger(
-            name = "incomingMessage",
-            queueName = "query-queue",
-            connection = "ServiceBusConnection"
-        ) String inputMessage,
-        final ExecutionContext context
-    ) {
-        context.getLogger().info("Received message: " + inputMessage);
-
-        // Simple transformation
-        String processedMessage = "Processed: " + inputMessage;
-
-        // Send to output queue
-        outputBinding.setValue(processedMessage);
-        context.getLogger().info("Sent to output queue: " + processedMessage);
+**local.settings.json**
+```json
+{
+        "IsEncrypted": false,
+        "Values": {
+        "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+        "FUNCTIONS_WORKER_RUNTIME": "java",
+        "orderServiceBus-connectString": "Endpoint=sb://<name-space>.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=privateKey"
+        ,"order-queue": "order-process-queue" 
     }
-
-    @FunctionName("output")
-    public void output(
-            @ServiceBusQueueOutput(
-                    name = "outputMessage",
-                    queueName = "query-queue",
-                    connection = "ServiceBusConnection"
-            ) OutputBinding<String> outputBinding,
-            final ExecutionContext context
-    ) {
-        context.getLogger().info("Received message: " + inputMessage);
-
-        // Simple transformation
-        String processedMessage = "Processed: " + inputMessage;
-
-        // Send to output queue
-        outputBinding.setValue(processedMessage);
-        context.getLogger().info("Sent to output queue: " + processedMessage);
-    }
-    
 }
 ```
+![Environment Variable.png](resource/service-bus-img/Environment%20Variable.png)
+
 #
-#### Create Programmatically via Java SDK
+### Create Programmatically via Java SDK
 ```pom
 <dependency>
     <groupId>com.microsoft.azure.functions</groupId>
