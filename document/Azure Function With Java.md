@@ -7,6 +7,7 @@
   - [*Create On Azure*](#create-on-azure)
   - [*Setup On Local*](#setup-on-local)
   - [*Create Programmatically Via Java SDK*](#create-programmatically-via-java-sdk)
+  - [*Service Bus with Topic and Subscriptions*](#service-bus-with-topic-and-subscription-only-support-standardpremium)
 
 
 ------------------------
@@ -210,3 +211,141 @@ public class QueueSetup {
     }
 }
 ```
+
+#
+### Service Bus With Topic and Subscription (Only Support Standard/Premium)
+- In a topic, you can create multiple Subscription it's same queue, but why need use topic-subscriptions?:
+  - Problem: With queues, a message is consumed by only one receiver. If multiple systems need the same message, you must send it multiple times (manual fan-out).
+  - Solution: Topic + subscriptions let you:
+    - Send once
+    - Let all interested subscribers get their own cop
+    - No producer changes if new consumers are added later
+      - if you use basic you need create extra queue and change Function TriggerOutput
+      - but with topic you don't need 
+
+- `topicName`: the name of your topic in Service Bus.
+- `subscriptionName`: the name of the subscription under that topic.
+
+#### Create:
+- Create ServiceBus Standard Or Premium
+- ![Create Topic.png](resource/service-bus-img/Create%20Topic.png)
+- And create `Subscription` ![Create Subscription.png](resource/service-bus-img/Create%20Subscription.png)
+
+#### Prising
+
+- On Reddit, one user highlighted that despite occasional infrastructure hiccups, Standard works well at a nominal cost—even with 30 million messages per month.
+
+| Architecture                             | Operations per Message   | Monthly Cost Estimate                    | Notes                                         |
+|------------------------------------------|--------------------------|------------------------------------------|-----------------------------------------------|
+| **3 Queues (Basic Tier)**                | 6 (3 sends + 3 receives) | \~\$0.30 (1M msgs × \$0.05)              | No base fee; scales with number of operations |
+| **1 Topic + 3 Subscriptions (Standard)** | 4 (1 send + 3 receives)  | \~\$10 base, possibly more if over limit | Efficient; built-in duplication; feature rich |
+
+
+- Prising when use
+
+| Component                       | Cost Estimate                                |
+|---------------------------------|----------------------------------------------|
+| **Base Fee (Standard Tier)**    | \~\$9.72/month                               |
+| **Included Operations**         | 13M operations free per month                |
+| **Additional Ops**              | \$5.21 → \$1.27 per million (tiered rates)   |
+| **Example (1M msgs via topic)** | \~\$9.72 total (operations within free tier) |
+
+
+
+#### Example:
+- with example: 1 Trigger Output for three queue
+  - When use `Queue`, you must call `3 queue` in `ServiceBusQueueOutput` and `call 3 times`
+- With example under use `topic` and `subscription` you just `call once ServiceBusQueueOutput` for `3 subscriptions(same queue)`
+
+
+```java
+import com.microsoft.azure.functions.annotation.*;
+import com.microsoft.azure.functions.*;
+
+public class OrderReceiverFunctionTopic {
+
+    @FunctionName("OrderReceiverTopic")
+    public void run(
+        @HttpTrigger(
+            name = "req",
+            methods = {HttpMethod.POST},
+            authLevel = AuthorizationLevel.ANONYMOUS
+        ) String orderJson,
+
+        @ServiceBusTopicOutput(
+            name = "topicOut",
+            topicName = "%TOPIC_NAME%",
+            connection = "serviceBus_connectionString"
+        ) OutputBinding<String> topicOut,
+
+        final ExecutionContext context
+    ) {
+        context.getLogger().info("Received new order: " + orderJson);
+        topicOut.setValue(orderJson);
+    }
+}
+```
+
+```java
+public class BillingProcessorTopic {
+    @FunctionName("BillingProcessorTopic")
+    public void run(
+        @ServiceBusTopicTrigger(
+            name = "message",
+            topicName = "%TOPIC_NAME%",
+            subscriptionName = "billing-sub",
+            connection = "serviceBus_connectionString"
+        ) String message,
+        final ExecutionContext context
+    ) {
+        context.getLogger().info("Billing Service received: " + message);
+    }
+}
+```
+```java
+public class ShippingProcessorTopic {
+    @FunctionName("ShippingProcessorTopic")
+    public void run(
+        @ServiceBusTopicTrigger(
+            name = "message",
+            topicName = "%TOPIC_NAME%",
+            subscriptionName = "shipping-sub",
+            connection = "serviceBus_connectionString"
+        ) String message,
+        final ExecutionContext context
+    ) {
+        context.getLogger().info("Shipping Service received: " + message);
+    }
+}
+```
+```java
+public class EmailProcessorTopic {
+    @FunctionName("EmailProcessorTopic")
+    public void run(
+        @ServiceBusTopicTrigger(
+            name = "message",
+            topicName = "%TOPIC_NAME%",
+            subscriptionName = "email-sub",
+            connection = "serviceBus_connectionString"
+        ) String message,
+        final ExecutionContext context
+    ) {
+        context.getLogger().info("Email Service received: " + message);
+    }
+}
+```
+
+- local.settings.json
+```json
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "java",
+    "orderServiceBus-connectString": "Endpoint=sb://<name-space>.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=privateKey"
+    ,"TOPIC_NAME": "order-events"
+  }
+}
+```
+
+- On Azure, You need config `Environment Variables` same with queue Above.
