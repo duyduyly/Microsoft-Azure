@@ -22,37 +22,16 @@
 <br/>
 
 ## Full Architecture Flow
-- `OrderReceiverFunction` Receive From Client
-  - Validate Json Payload
-  - check quantity Inventory
-  - make message queue to push in queue
-  - if Not pass validate
-    - return fail response
-    - not push queue
-- `OrderProcessorFunction` Trigger Queue
-  - update quantity Inventory
-  - push notification for Client
+- Download Order Request Function (download order file from sftp)
+  - download file from sftp and upload on blobs storages
+- OrderReceiverFunction (trigger from Blob storages to get order json)
+  - Trigger file and handle
+- OrderProcessorFunction (unchanged)
+- MailFunction (push success order or  Fail Order from LOG_TOPIC)
+  - send mail fail or success for client 
+  - send analytic for management
 
-```text
-[Frontend Client]
-     |
-     ↓  (POST /order)
-[OrderReceiverFunction] ──→ (Lookup Table Storage for customer info)
-     ↓
-  [Optional: Check Json Payload]
-     ↓
-  [Optional: Inventory Check]
-     ↓
-  (ServiceBusQueue: orders)
-     ↓
-[OrderProcessorFunction]
-     ↓
-  (Update Inventory Quantity)    
-     ↓
-  (Push Notification to Client)    
-     ↓
- [Optional: Send Email/Notification]
-```
+![Flow Order System Image.png](resources/Flow%20Order%20System%20Image.png)
 
 -------------------
 <br/>
