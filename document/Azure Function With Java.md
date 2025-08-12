@@ -8,7 +8,8 @@
   - [*Setup On Local*](#setup-on-local)
   - [*Create Programmatically Via Java SDK*](#create-programmatically-via-java-sdk)
   - [*Service Bus with Topic and Subscriptions*](#service-bus-with-topic-and-subscription-only-support-standardpremium)
-
+- [**Blob Storage**](#blob-storage)
+- [**@TimerTrigger (scheduler Job)**](#timertrigger-scheduler-job)
 
 ------------------------
 <br/>
@@ -349,3 +350,102 @@ public class EmailProcessorTopic {
 ```
 
 - On Azure, You need config `Environment Variables` same with queue Above.
+
+
+----------------------
+<br/>
+
+
+## Blob Storage
+- to handle special Data Type 
+- Azure Blob Storage is Microsoft’s cloud service for storing unstructured data (files, images, videos, backups, logs, etc.) at massive scale.
+- Files (images, videos, documents)
+- Backups
+- Logs
+- Big binary datasets
+
+- Organized:
+```text
+Storage Account
+    └── Container  (like a folder)
+           └── Blob (your actual file/data)
+```
+- `Storage Account` : top-level namespace in Azure.
+- `Container` : a logical grouping of blobs.
+- `Blob` :the actual object/file.
+
+#
+### Types Of Blobs
+- Azure supports three main types:
+
+| Blob Type       | Use Case                                                                 |
+|-----------------|--------------------------------------------------------------------------|
+| **Block blob**  | Most common; store files, text, binary data (can be uploaded in chunks). |
+| **Append blob** | Optimized for adding data at the end (good for logs).                    |
+| **Page blob**   | Optimized for random read/write (used for Azure VM disks).               |
+
+
+#
+### Prising
+- Storage Capacity (GB/Month)
+  - `Hot`: frequently accessed data, higher storage cost but low access cost.
+  - `Cool`: infrequently accessed data, cheaper storage but higher access cost.
+  - `Archive`: rarely accessed, cheapest storage but highest retrieval cost and latenc
+
+**Rough example (US East region, typical monthly costs):**
+
+| Tier    | Storage per GB | Read/Write per 10k ops | Data Retrieval per GB          | Notes                 |
+|---------|----------------|------------------------|--------------------------------|-----------------------|
+| Hot     | \~\$0.0184     | Low (a few cents)      | Included                       | For frequent access   |
+| Cool    | \~\$0.01       | Higher than Hot        | \~\$0.01/GB                    | For infrequent access |
+| Archive | \~\$0.00099    | Higher than Cool       | \~\$0.02/GB+ retrieval latency | For long-term storage |
+
+### Example (Update later)
+
+--------------------
+<br/>
+
+## @TimerTrigger (Scheduler Job)
+- `@TimerTrigger` is an input binding annotation that lets your function run automatically on a schedule without needing any HTTP request, queue message, or event to trigger it.
+- It’s basically a CRON job in the cloud — but managed by Azure, so you don’t need a separate scheduler service.
+
+- **Example:**
+- schedule = `{second} {minute} {hour} {day} {month} {day-of-week}`
+```java
+@FunctionName("MyTimerFunction")
+public void run(
+    @TimerTrigger(
+        name = "timerInfo", 
+        schedule = "0 */5 * * * *"  // Every 5 minutes
+    ) String timerInfo,
+    final ExecutionContext context) {
+
+    context.getLogger().info("Timer function executed at: " + java.time.LocalDateTime.now());
+}
+```
+
+- **Example 2:**
+```java
+@FunctionName("downloadFile")
+public void run(
+    @TimerTrigger(
+        name = "download", 
+        schedule = "%DOWNLOAD_INTERVAL%"  // Every 5 minutes
+    ) String timerInfo,
+    final ExecutionContext context) {
+
+    context.getLogger().info("Timer function executed at: " + java.time.LocalDateTime.now());
+}
+```
+- `local.settings.json` (config on local)
+```json
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "java",
+    "DOWNLOAD_INTERVAL":"0 */5 * * * *"
+  }
+}
+```
+- if you use on Azure, you must config on `Environment Variables`
