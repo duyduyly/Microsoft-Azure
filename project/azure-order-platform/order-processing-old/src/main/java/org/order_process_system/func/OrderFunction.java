@@ -10,6 +10,7 @@ import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.HttpTrigger;
 import com.microsoft.azure.functions.annotation.ServiceBusQueueOutput;
 import com.microsoft.azure.functions.annotation.ServiceBusQueueTrigger;
+import org.order_process_system.constant.AppConstant;
 import org.order_process_system.model.payload.OrderMessage;
 import org.order_process_system.model.payload.OrderRequest;
 import org.order_process_system.service.MailService;
@@ -26,7 +27,7 @@ public class OrderFunction {
                     authLevel = AuthorizationLevel.ANONYMOUS) HttpRequestMessage<Optional<OrderRequest>> request,
             @ServiceBusQueueOutput(
                     name = "enqueue",
-                    queueName = "%order-queue%",
+                    queueName = AppConstant.ORDER_QUEUE_KEY,
                     connection = "orderServiceBus-connectString"
             ) OutputBinding<OrderMessage> output,
             final ExecutionContext context) {
@@ -39,7 +40,7 @@ public class OrderFunction {
     public void processOrder(
             @ServiceBusQueueTrigger(
                     name = "dequeue",
-                    queueName = "%order-queue%",
+                    queueName = AppConstant.ORDER_QUEUE_KEY,
                     connection = "orderServiceBus-connectString") OrderMessage orderMessage,
             final ExecutionContext context) {
 
